@@ -1,0 +1,17 @@
+[package]
+name = "graph-sketchpad"
+version = "0.1.0"
+authors = ["D. Cheatham <7143383+dcheatha@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+random_color = "0.5.0"
+num-traits = "0.2"
+
+[dependencies.sdl2]
+version = "0.34"
+default-features = false
+features = ["ttf","gfx"]
+
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"
