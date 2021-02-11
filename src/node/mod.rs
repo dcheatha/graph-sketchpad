@@ -38,12 +38,14 @@ impl Node {
 
     let degree = self.get_degree(graph);
     if degree > 1 {
-      canvas.string(
-        self.cords.0 - 20,
-        self.cords.1 - 20,
-        &*format!("{}", degree),
-        self.color,
-      ).unwrap();
+      canvas
+        .string(
+          self.cords.0 - 20,
+          self.cords.1 - 20,
+          &*format!("{}", degree),
+          self.color,
+        )
+        .unwrap();
     }
 
     // draw the normal circle

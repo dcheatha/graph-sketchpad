@@ -23,17 +23,19 @@ impl Graph {
     let degree = self.get_degree();
     let partite = self.get_partite();
 
-    canvas.string(
-      20,
-      20,
-      &*format!(
-        "{vertices} vertices, {edges} edges, {degree} degree, {partite}-partite",
-        vertices = num_nodes,
-        edges = num_edges,
-        degree = degree,
-        partite = partite,
-      ),
-      Color::WHITE,
-    ).unwrap();
+    canvas
+      .string(
+        20,
+        20,
+        &*format!(
+          "{vertices} vertices, {edges} edges, {degree} degree, {partite}-partite",
+          vertices = num_nodes,
+          edges = num_edges,
+          degree = degree,
+          partite = partite,
+        ),
+        Color::WHITE,
+      )
+      .unwrap();
   }
 }

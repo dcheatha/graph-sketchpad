@@ -14,6 +14,9 @@ pub struct MouseState {
   pub drag_left: Option<usize>,
   pub drag_right: Option<usize>,
   pub drag_mid: Option<usize>,
+
+  pub label_buffer: String,
+  pub renaming: bool,
 }
 
 impl App {
@@ -170,11 +173,57 @@ impl App {
     history.retain(|node_idx| *node_idx != idx)
   }
 
+  fn event_rename_node(&mut self) {
+    if !self.mouse_state.renaming {
+      self.mouse_state.renaming = true;
+      self.mouse_state.label_buffer = String::new();
+    }
+
+    self.mouse_state.renaming = false;
+
+    let history = &mut self.mouse_state.history_left;
+
+    if history.len() < 1 {
+      return;
+    }
+
+    let idx = history[history.len() - 1];
+    let node = &mut self.graph.nodes[idx];
+
+    node.label = self.mouse_state.label_buffer.clone();
+  }
+
+  fn event_rename_process(&mut self, events: Vec<Event>) {
+    for event in events {
+      match event {
+        Event::KeyDown {
+          keycode: Some(Keycode::KpEnter),
+          ..
+        } => {
+          self.event_rename_node();
+        }
+        Event::KeyDown {
+          keycode: Some(key),
+          ..
+        } => {
+          self.mouse_state.label_buffer.push(key.to_string().parse().unwrap());
+        }
+        _ => {}
+      }
+    }
+  }
+
   //fn event_
 
   /// Processes events from the OS
   pub(crate) fn event_process(&mut self) -> bool {
     let events: Vec<Event> = self.event_pump.poll_iter().collect();
+
+    if self.mouse_state.renaming {
+      self.event_rename_process(events);
+      return false;
+    }
+
     for event in events {
       match event {
         Event::MouseButtonDown { .. } | Event::MouseMotion { .. } => {
@@ -190,6 +239,10 @@ impl App {
           keycode: Some(Keycode::R),
           ..
         } => self.event_del_edge(),
+        Event::KeyDown {
+          keycode: Some(Keycode::L),
+          ..
+        } => self.event_rename_node(),
         Event::KeyDown {
           keycode: Some(Keycode::N),
           ..

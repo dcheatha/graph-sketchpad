@@ -16,11 +16,11 @@ impl Graph {
       return;
     }
 
-    let edge = Edge::new(self.edges.len(), nodes_idx, 1, color, false);
+    let edge = Edge::new(self.edges.len(), nodes_idx, 1, color, true);
 
     self.edges.push(edge);
 
-    self.crazy_stupid_k_coloring_look_away_professor();
+    self.k_color_painter();
   }
 
   pub fn del_edge(&mut self, nodes_idx: (usize, usize)) {
@@ -40,20 +40,14 @@ impl Graph {
   }
 
   pub fn add_node(&mut self, cords: (i16, i16)) {
-    let [r, g, b] = RandomColor::new().to_rgb_array();
+    self.nodes.push(Node::new(
+      cords,
+      String::new(),
+      Color::RED,
+      self.nodes.len(),
+    ));
 
-    let color = Color {
-      r: r as u8,
-      g: g as u8,
-      b: b as u8,
-      a: 255,
-    };
-
-    self
-      .nodes
-      .push(Node::new(cords, String::new(), color, self.nodes.len()));
-
-    self.crazy_stupid_k_coloring_look_away_professor();
+    self.k_color_painter();
   }
 
   pub fn del_node(&mut self, node_idx: usize) {

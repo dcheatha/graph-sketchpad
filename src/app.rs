@@ -31,6 +31,8 @@ impl App {
         drag_left: None,
         drag_right: None,
         drag_mid: None,
+        label_buffer: "".to_string(),
+        renaming: false
       },
     }
   }

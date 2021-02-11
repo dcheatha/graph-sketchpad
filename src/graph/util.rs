@@ -1,4 +1,6 @@
 use crate::graph::Graph;
+use crate::node::Node;
+use rand::seq::IteratorRandom;
 use random_color::RandomColor;
 use sdl2::pixels::Color;
 use std::collections::HashSet;
@@ -18,7 +20,9 @@ impl Graph {
     let mut uniq_colors: HashSet<Color> = HashSet::new();
 
     for node in &self.nodes {
-      uniq_colors.insert(node.color);
+      if !node.deleted {
+        uniq_colors.insert(node.color);
+      }
     }
 
     uniq_colors.iter().count() as i16
@@ -31,12 +35,16 @@ impl Graph {
       return true;
     }
 
+    if self.get_partite() > self.get_degree() + 1 {
+      return false;
+    }
+
     for node in &self.nodes {
       let neighbors = node.get_neighbors(self);
       let neighbors = neighbors.iter().map(|idx| &self.nodes[*idx]);
 
       for neighbor in neighbors {
-        if node.color == neighbor.color {
+        if node.color == neighbor.color || node.color == Color::WHITE {
           return false;
         }
       }
@@ -45,26 +53,35 @@ impl Graph {
     true
   }
 
-  pub fn crazy_stupid_k_coloring_look_away_professor(&mut self) {
-    // start with red, blue, green yellow...
+  fn generate_k_colors(&self, max_colors: i16) -> Vec<Color> {
     let mut colors = vec![[255, 0, 0], [0, 0, 255], [0, 255, 0], [255, 255, 0]];
 
-    // X(H) <= Delta(H) + 1, so:
-    let k_number = self.get_degree() + 1;
+    let mut uniq_colors: HashSet<Color> = HashSet::new();
+    for node in &self.nodes {
+      if !node.deleted {
+        uniq_colors.insert(node.color);
+      }
+    }
 
-    println!("k={}", k_number);
+    for color in uniq_colors {
+      let (r, g, b) = color.rgb();
+      let color = [r as u32, g as u32, b as u32];
 
-    // Add more colors until we hit the amount we need:
-    while colors.len() < k_number as usize {
+      if !colors.contains(&color) {
+        colors.push(color);
+      }
+    }
+
+
+    while colors.len() < max_colors as usize {
       colors.push(RandomColor::new().to_rgb_array());
     }
 
-    while colors.len() > k_number as usize {
+    while colors.len() > max_colors as usize {
       colors.pop();
     }
 
-    // Now that we have the RGB colors, map them to the right structs:
-    let colors: Vec<Color> = colors
+    colors
       .iter()
       .map(|[r, g, b]| Color {
         r: *r as u8,
@@ -72,74 +89,83 @@ impl Graph {
         b: *b as u8,
         a: 255,
       })
-      .collect();
+      .into_iter()
+      .collect()
+  }
 
-    // Now set every node to the same color:
-    for node in self.nodes.iter_mut() {
-      node.color = *colors.first().unwrap();
+  pub fn k_color_painter_rec(
+    &mut self,
+    colors: &Vec<Color>,
+    visited: &mut Vec<usize>,
+    node_id: usize,
+  ) {
+
+    let node = &self.nodes[node_id];
+
+    if node.deleted || visited.contains(&node_id) {
+      return;
     }
 
-    let mut loop_cnt = 0;
-    // This looks like O(n^m) runtime. Whoops.
-    while !self.is_k_colored() && loop_cnt < 100 {
-      loop_cnt += 1;
-      for pos in 1..(k_number + 1) {
-        let mut colors = colors.clone();
+    visited.push(node.index);
 
-        while colors.len() + 1 > pos as usize {
-          colors.pop();
-        }
+    for neighbor_id in node.get_neighbors(self) {
+      self.k_color_painter_rec(colors, visited, neighbor_id);
+    }
 
-        for _pos in 0..loop_cnt {
-          let [r, g, b] = RandomColor::new().to_rgb_array();
-          colors.push(Color {
-            r: r as u8,
-            g: g as u8,
-            b: b as u8,
-            a: 255,
-          });
-        }
+    let node = &self.nodes[node_id];
 
-        let mut new_colors = vec![];
+    // get and insert all unique colors
+    let mut neighbor_colors: HashSet<Color> = HashSet::new();
+    let neighbors = node.get_neighbors(self);
+    let neighbors = neighbors
+      .iter()
+      .map(|id| &self.nodes[*id])
+      .filter(|node| node.deleted == false);
 
-        for node in self.nodes.iter() {
-          let neighbors = node.get_neighbors(self);
-          let mut neighbor_colors = vec![];
+    for node in neighbors {
+      neighbor_colors.insert(node.color);
+    }
 
-          let mut new_color = node.color;
+    // now we need a color none of the neighbors have...
+    let leftover_colors = colors
+      .iter()
+      .filter(|color| !neighbor_colors.contains(*color));
 
-          for neighbor in neighbors {
-            let neighbor = &self.nodes[neighbor];
+    let node = &mut self.nodes[node_id];
+    match leftover_colors.choose(&mut rand::thread_rng()) {
+      None => {
+        node.color = Color::WHITE;
+      }
+      Some(color) => {
+        node.color = *color;
+      }
+    }
+  }
 
-            if neighbor.color == node.color {
-              neighbor_colors.push((neighbor.index, neighbor.color));
-            } else {
-              continue;
-            }
+  pub fn k_color_painter(&mut self) {
+    let max_colors = self.get_degree() + 1;
 
-            let neighbor_colors: Vec<Color> = neighbor_colors
-              .iter()
-              .map(|(index, color)| {
-                if *index < new_colors.len() {
-                  new_colors[*index]
-                } else {
-                  *color
-                }
-              })
-              .collect();
+    let mut loop_count = 0;
+    while !self.is_k_colored() && loop_count < 100 {
+      loop_count += 1;
 
-            new_color = *colors
-              .iter()
-              .filter(|color| !neighbor_colors.contains(color))
-              .next()
-              .unwrap_or(&Color::BLUE);
+      for node in &mut self.nodes {
+        node.color = Color::RED;
+      }
+
+      for colors_len in 1..=max_colors {
+        let colors = self.generate_k_colors(colors_len);
+        println!("Generated {} colors to draw with", colors.len());
+
+        let mut random = rand::thread_rng();
+        for _rounds in 1..=1000 {
+          let node = self.nodes.iter().choose(&mut random).unwrap();
+          let mut visited_nodes = vec![];
+          self.k_color_painter_rec(&colors, &mut visited_nodes, node.index.clone());
+
+          if self.is_k_colored() {
+            return;
           }
-
-          new_colors.push(new_color);
-        }
-
-        for (index, node) in self.nodes.iter_mut().enumerate() {
-          node.color = new_colors[index];
         }
       }
     }
